@@ -61,7 +61,7 @@
     fetch(workatoUrl,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({itemId,fileName})
+      body:JSON.stringify({action,itemId,fileName})
     }).then(()=>{
       document.getElementById('spinner').style.display='none';
       document.getElementById('icon').textContent='✅';
