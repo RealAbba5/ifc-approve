@@ -15,7 +15,7 @@
   .icon{font-size:56px;margin-bottom:16px}
   .title{font-size:20px;font-weight:bold;margin-bottom:8px}
   .subtitle{color:#666;font-size:14px;margin-bottom:20px;line-height:1.5}
-  .filename{background:#f8f9fb;border:1px solid #ddd;border-radius:6px;padding:10px 16px;font-size:12px;color:#333;word-break:break-all;margin-bottom:0}
+  .filename{background:#f8f9fb;border:1px solid #ddd;border-radius:6px;padding:10px 16px;font-size:12px;color:#333;word-break:break-all}
   .spinner{border:3px solid #eee;border-top:3px solid #1a3a5c;border-radius:50%;width:36px;height:36px;animation:spin .8s linear infinite;margin:0 auto 20px}
   @keyframes spin{to{transform:rotate(360deg)}}
   .footer{background:#1a3a5c;padding:12px;text-align:center}
@@ -43,8 +43,15 @@
   const itemId=p.get('itemId')||'';
   const fileName=p.get('fileName')||'';
   document.getElementById('filename').textContent=fileName;
-  fetch('https://webhooks.eu.workato.com/webhooks/rest/1677986b-4d74-452a-9234-755a1d4c656a/ifc-compliance-approval',{
-    method:'POST',headers:{'Content-Type':'application/json'},
+
+  // Send action as query param (Workato reads this as Params->Action)
+  // Send itemId and fileName in body (Workato reads as Payload fields)
+  const workatoBase='https://webhooks.eu.workato.com/webhooks/rest/1677986b-4d74-452a-9234-755a1d4c656a/ifc-compliance-approval';
+  const workatoUrl=workatoBase+'?action='+encodeURIComponent(action);
+
+  fetch(workatoUrl,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
     body:JSON.stringify({action,itemId,fileName})
   }).then(()=>{
     document.getElementById('spinner').remove();
