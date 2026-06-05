@@ -30,51 +30,44 @@
   </div>
   <div class="body">
     <div id="icon"></div>
-    <div class="spinner" id="spinner" style="display:none"></div>
-    <div class="title" id="title"></div>
-    <div class="subtitle" id="subtitle"></div>
+    <div class="spinner" id="spinner"></div>
+    <div class="title" id="title">Processing...</div>
+    <div class="subtitle" id="subtitle">Please wait...</div>
     <div class="filename" id="filename"></div>
   </div>
   <div class="footer"><p>IFC Compliance Pipeline &middot; REDS10 Digital Innovation</p></div>
 </div>
 <script>
-  const p=new URLSearchParams(window.location.search);
-  const action=p.get('action')||'approve';
-  const itemId=p.get('itemId')||'';
-  const fileName=p.get('fileName')||'';
+  var p=new URLSearchParams(window.location.search);
+  var action=p.get('action')||'approve';
+  var itemId=p.get('itemId')||'';
+  var fileName=p.get('fileName')||'';
   document.getElementById('filename').textContent=fileName;
 
-  if(action==='reject'){
-    // Reject: show UI only, no Workato call needed
-    document.getElementById('icon').textContent='❌';
-    document.getElementById('title').style.color='#c62828';
-    document.getElementById('title').textContent='Report Rejected';
-    document.getElementById('subtitle').textContent='The report has been rejected. Manual corrections are required before re-submitting. The BIM team has been notified.';
-  } else {
-    // Approve: show spinner, call Workato
-    document.getElementById('spinner').style.display='block';
-    document.getElementById('title').style.color='#555';
-    document.getElementById('title').textContent='Processing...';
-    document.getElementById('subtitle').textContent='Please wait while we approve the report.';
-
-    const workatoUrl='https://webhooks.eu.workato.com/webhooks/rest/1677986b-4d74-452a-9234-755a1d4c656a/ifc-compliance-approval';
-    fetch(workatoUrl,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action,itemId,fileName})
-    }).then(()=>{
-      document.getElementById('spinner').style.display='none';
+  var workatoUrl='https://webhooks.eu.workato.com/webhooks/rest/1677986b-4d74-452a-9234-755a1d4c656a/ifc-compliance-approval';
+  fetch(workatoUrl,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:action,itemId:itemId,fileName:fileName})
+  }).then(function(){
+    document.getElementById('spinner').style.display='none';
+    if(action==='approve'){
       document.getElementById('icon').textContent='✅';
       document.getElementById('title').style.color='#2e7d32';
       document.getElementById('title').textContent='Report Approved!';
       document.getElementById('subtitle').textContent='The report is being copied to IFC Reports (Approved) in ACC. You may close this tab.';
-    }).catch(()=>{
-      document.getElementById('spinner').style.display='none';
-      document.getElementById('title').textContent='Something went wrong';
+    } else {
+      document.getElementById('icon').textContent='❌';
       document.getElementById('title').style.color='#c62828';
-      document.getElementById('subtitle').textContent='Please try again or contact the BIM team.';
-    });
-  }
+      document.getElementById('title').textContent='Report Rejected';
+      document.getElementById('subtitle').textContent='The report has been rejected. Manual corrections required before re-submitting.';
+    }
+  }).catch(function(){
+    document.getElementById('spinner').style.display='none';
+    document.getElementById('title').textContent='Something went wrong';
+    document.getElementById('title').style.color='#c62828';
+    document.getElementById('subtitle').textContent='Please try again or contact the BIM team.';
+  });
 </script>
 </body>
 </html>
