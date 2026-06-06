@@ -16,10 +16,14 @@
   .title{font-size:20px;font-weight:bold;margin-bottom:8px}
   .subtitle{color:#666;font-size:14px;margin-bottom:20px;line-height:1.5}
   .filename{background:#f8f9fb;border:1px solid #ddd;border-radius:6px;padding:10px 16px;font-size:12px;color:#333;word-break:break-all}
+  .date{color:#999;font-size:12px;margin-top:12px}
   .spinner{border:3px solid #eee;border-top:3px solid #1a3a5c;border-radius:50%;width:36px;height:36px;animation:spin .8s linear infinite;margin:0 auto 20px}
   @keyframes spin{to{transform:rotate(360deg)}}
   .footer{background:#1a3a5c;padding:12px;text-align:center}
   .footer p{color:#aac4e0;font-size:11px}
+  .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:bold;margin-top:8px}
+  .badge-approved{background:#e8f5e9;color:#2e7d32}
+  .badge-rejected{background:#ffebee;color:#c62828}
 </style>
 </head>
 <body>
@@ -31,9 +35,10 @@
   <div class="body">
     <div id="icon"></div>
     <div class="spinner" id="spinner"></div>
-    <div class="title" id="title">Processing...</div>
-    <div class="subtitle" id="subtitle">Please wait...</div>
+    <div class="title" id="title">Checking status...</div>
+    <div class="subtitle" id="subtitle"></div>
     <div class="filename" id="filename"></div>
+    <div class="date" id="date"></div>
   </div>
   <div class="footer"><p>IFC Compliance Pipeline &middot; REDS10 Digital Innovation</p></div>
 </div>
@@ -42,32 +47,72 @@
   var action=p.get('action')||'approve';
   var itemId=p.get('itemId')||'';
   var fileName=p.get('fileName')||'';
+  var safeName=fileName.replace(/[^a-zA-Z0-9._-]/g,'_');
+
   document.getElementById('filename').textContent=fileName;
 
-  var workatoUrl='https://webhooks.eu.workato.com/webhooks/rest/1677986b-4d74-452a-9234-755a1d4c656a/ifc-compliance-approval';
-  fetch(workatoUrl,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:action,itemId:itemId,fileName:fileName})
-  }).then(function(){
-    document.getElementById('spinner').style.display='none';
-    if(action==='approve'){
-      document.getElementById('icon').textContent='✅';
-      document.getElementById('title').style.color='#2e7d32';
-      document.getElementById('title').textContent='Report Approved!';
-      document.getElementById('subtitle').textContent='The report is being copied to IFC Reports (Approved) in ACC. You may close this tab.';
-    } else {
-      document.getElementById('icon').textContent='❌';
+  // Step 1: Check state file in GitHub (public repo — no auth needed)
+  var stateUrl='https://api.github.com/repos/RealAbba5/ifc-approve/contents/state/'+safeName+'.json';
+
+  fetch(stateUrl,{headers:{Accept:'application/vnd.github+json'}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(data && data.content){
+        // State file exists — already processed
+        var state=JSON.parse(atob(data.content.replace(/\n/g,'')));
+        document.getElementById('spinner').style.display='none';
+        if(state.status==='approved'){
+          document.getElementById('icon').textContent='✅';
+          document.getElementById('title').style.color='#2e7d32';
+          document.getElementById('title').textContent='Already Approved';
+          document.getElementById('subtitle').textContent='This report has already been approved and copied to IFC Reports (Approved) in ACC.';
+          document.getElementById('date').innerHTML='<span class="badge badge-approved">Approved on '+state.date+'</span>';
+        } else {
+          document.getElementById('icon').textContent='❌';
+          document.getElementById('title').style.color='#c62828';
+          document.getElementById('title').textContent='Already Rejected';
+          document.getElementById('subtitle').textContent='This report was already rejected. Await a corrected re-submission.';
+          document.getElementById('date').innerHTML='<span class="badge badge-rejected">Rejected on '+state.date+'</span>';
+        }
+      } else {
+        // Not processed yet — proceed
+        processAction();
+      }
+    })
+    .catch(function(){
+      // 404 or error = not processed — proceed
+      processAction();
+    });
+
+  function processAction(){
+    document.getElementById('title').textContent='Processing...';
+    document.getElementById('subtitle').textContent='Please wait...';
+
+    var workatoUrl='https://webhooks.eu.workato.com/webhooks/rest/1677986b-4d74-452a-9234-755a1d4c656a/ifc-compliance-approval';
+    fetch(workatoUrl,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:action,itemId:itemId,fileName:fileName})
+    }).then(function(){
+      document.getElementById('spinner').style.display='none';
+      if(action==='approve'){
+        document.getElementById('icon').textContent='✅';
+        document.getElementById('title').style.color='#2e7d32';
+        document.getElementById('title').textContent='Report Approved!';
+        document.getElementById('subtitle').textContent='The report is being copied to IFC Reports (Approved) in ACC. You may close this tab.';
+      } else {
+        document.getElementById('icon').textContent='❌';
+        document.getElementById('title').style.color='#c62828';
+        document.getElementById('title').textContent='Report Rejected';
+        document.getElementById('subtitle').textContent='The report has been rejected. Manual corrections required before re-submitting.';
+      }
+    }).catch(function(){
+      document.getElementById('spinner').style.display='none';
+      document.getElementById('title').textContent='Something went wrong';
       document.getElementById('title').style.color='#c62828';
-      document.getElementById('title').textContent='Report Rejected';
-      document.getElementById('subtitle').textContent='The report has been rejected. Manual corrections required before re-submitting.';
-    }
-  }).catch(function(){
-    document.getElementById('spinner').style.display='none';
-    document.getElementById('title').textContent='Something went wrong';
-    document.getElementById('title').style.color='#c62828';
-    document.getElementById('subtitle').textContent='Please try again or contact the BIM team.';
-  });
+      document.getElementById('subtitle').textContent='Please try again or contact the BIM team.';
+    });
+  }
 </script>
 </body>
 </html>
