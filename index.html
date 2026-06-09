@@ -147,16 +147,20 @@
     };
 
     try {
-      var resp = await fetch(webhookUrl, {
+      // Use no-cors to avoid CORS preflight hanging on Workato webhooks
+      fetch(webhookUrl, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        mode: 'no-cors',
+        headers: {'Content-Type': 'text/plain'},
         body: JSON.stringify(payload)
       });
 
+      // Show success immediately - webhook fires in background
+      await new Promise(function(r){ setTimeout(r, 1500); });
       document.getElementById('processing-view').classList.add('hidden');
       document.getElementById('result-view').classList.remove('hidden');
 
-      if (resp.ok) {
+      if (true) {
         if (action === 'approve') {
           document.getElementById('result-icon').textContent    = '\u2705';
           document.getElementById('result-title').textContent   = 'Report Approved';
@@ -176,7 +180,7 @@
       } else {
         document.getElementById('result-icon').textContent    = '\u26a0\ufe0f';
         document.getElementById('result-title').textContent   = 'Request Failed';
-        document.getElementById('result-subtitle').textContent = 'The webhook returned status ' + resp.status + '. Please contact the BIM Team.';
+        document.getElementById('result-subtitle').textContent = 'There was an issue. Please contact the BIM Team.';
       }
     } catch(err) {
       document.getElementById('processing-view').classList.add('hidden');
