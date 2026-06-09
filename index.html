@@ -147,34 +147,12 @@
     };
 
     try {
-      // Use hidden form POST to avoid CORS preflight entirely
-      var form = document.createElement('form');
-      form.method = 'POST';
-      form.action = webhookUrl;
-      form.target = 'submit_frame';
-      form.style.display = 'none';
-      Object.keys(payload).forEach(function(key) {
-        var input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = payload[key];
-        form.appendChild(input);
-      });
-      // Create hidden iframe to receive response
-      var iframe = document.getElementById('submit_frame');
-      if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.name = 'submit_frame';
-        iframe.id = 'submit_frame';
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
-      }
-      document.body.appendChild(form);
-      form.submit();
-      form.remove();
+      // Use sendBeacon with JSON blob - no CORS preflight, sends as application/json
+      var blob = new Blob([JSON.stringify(payload)], {type: 'application/json'});
+      navigator.sendBeacon(webhookUrl, blob);
 
-      // Show success after brief delay
-      await new Promise(function(r){ setTimeout(r, 2000); });
+      // Show success after brief delay (sendBeacon is fire-and-forget)
+      await new Promise(function(r){ setTimeout(r, 1500); });
       document.getElementById('processing-view').classList.add('hidden');
       document.getElementById('result-view').classList.remove('hidden');
 
