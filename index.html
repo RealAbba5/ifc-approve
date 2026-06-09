@@ -88,11 +88,16 @@
     document.getElementById('title').textContent='Processing...';
     document.getElementById('subtitle').textContent='Please wait...';
 
-    var workatoUrl='https://webhooks.eu.workato.com/webhooks/rest/1677986b-4d74-452a-9234-755a1d4c656a/ifc-compliance-approval';
+    var projectId=p.get('projectId')||'';
+    var approvedFolderUrn=p.get('approvedFolderUrn')||'';
+    var approvedBy=p.get('approvedBy')||'BIM Team';
+    var approveUrl='https://webhooks.eu.workato.com/webhooks/rest/ba15636d-84ce-43f3-a362-84737ccf041b/ifc-compliance-approval-handle';
+    var rejectUrl='https://webhooks.eu.workato.com/webhooks/rest/ba15636d-84ce-43f3-a362-84737ccf041b/ifc-compliance-selection-reject';
+    var workatoUrl=action==='approve'?approveUrl:rejectUrl;
     fetch(workatoUrl,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:action,itemId:itemId,fileName:fileName})
+      body:JSON.stringify({action:action,itemId:itemId,fileName:fileName,projectId:projectId,approvedFolderUrn:approvedFolderUrn,approvedBy:approvedBy})
     }).then(function(){
       document.getElementById('spinner').style.display='none';
       if(action==='approve'){
