@@ -15,8 +15,17 @@
   .icon{font-size:56px;margin-bottom:16px}
   .title{font-size:20px;font-weight:bold;margin-bottom:8px;color:#1a3a5c}
   .subtitle{color:#666;font-size:14px;margin-bottom:20px;line-height:1.5}
-  .filename{background:#f8f9fb;border:1px solid #ddd;border-radius:6px;padding:10px 16px;font-size:12px;color:#333;word-break:break-all;text-align:left}
-  .date{color:#999;font-size:12px;margin-top:12px}
+  .filename{background:#f8f9fb;border:1px solid #ddd;border-radius:6px;padding:10px 16px;font-size:12px;color:#333;word-break:break-all;text-align:left;margin-bottom:16px}
+  .email-section{text-align:left;margin-bottom:20px}
+  .email-section label{display:block;font-size:13px;font-weight:bold;color:#1a3a5c;margin-bottom:6px}
+  .email-section input{width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:6px;font-size:14px;outline:none;transition:border .2s}
+  .email-section input:focus{border-color:#1a3a5c}
+  .email-section .hint{font-size:11px;color:#999;margin-top:4px}
+  .btn{width:100%;padding:14px;border:none;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;transition:opacity .2s}
+  .btn-approve{background:#2e7d32;color:white}
+  .btn-reject{background:#c62828;color:white}
+  .btn:hover{opacity:.9}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
   .spinner{border:3px solid #eee;border-top:3px solid #1a3a5c;border-radius:50%;width:36px;height:36px;animation:spin .8s linear infinite;margin:0 auto 20px}
   @keyframes spin{to{transform:rotate(360deg)}}
   .footer{background:#1a3a5c;padding:12px;text-align:center}
@@ -24,6 +33,7 @@
   .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:bold;margin-top:8px}
   .badge-approved{background:#e8f5e9;color:#2e7d32}
   .badge-rejected{background:#ffebee;color:#c62828}
+  .date{color:#999;font-size:12px;margin-top:12px}
   .hidden{display:none}
 </style>
 </head>
@@ -33,14 +43,33 @@
     <h1>IFC Compliance Pipeline</h1>
     <p>REDS10 Digital Innovation</p>
   </div>
-  <div class="body">
-    <div id="icon" class="icon hidden"></div>
-    <div class="spinner" id="spinner"></div>
-    <div class="title" id="title">Processing...</div>
-    <div class="subtitle" id="subtitle">Please wait while we record your decision.</div>
-    <div class="filename" id="filename" style="display:none"></div>
-    <div class="date" id="date"></div>
+  <div class="body" id="confirm-view">
+    <div class="icon" id="action-icon"></div>
+    <div class="title" id="action-title"></div>
+    <div class="subtitle" id="action-subtitle"></div>
+    <div class="filename" id="filename-display"></div>
+    <div class="email-section">
+      <label for="approver-email">Your Email Address *</label>
+      <input type="email" id="approver-email" placeholder="bimteam@reds10.com" />
+      <div class="hint">A copy of the transmittal will be sent to this address</div>
+    </div>
+    <button class="btn" id="confirm-btn" onclick="submitAction()">Confirm</button>
   </div>
+
+  <div class="body hidden" id="processing-view">
+    <div class="spinner"></div>
+    <div class="title">Processing...</div>
+    <div class="subtitle">Please wait while we record your decision.</div>
+  </div>
+
+  <div class="body hidden" id="result-view">
+    <div class="icon" id="result-icon"></div>
+    <div class="title" id="result-title"></div>
+    <div class="subtitle" id="result-subtitle"></div>
+    <div class="filename" id="result-filename" style="display:none"></div>
+    <div class="date" id="result-date"></div>
+  </div>
+
   <div class="footer"><p>IFC Compliance Pipeline &middot; REDS10 Digital Innovation</p></div>
 </div>
 
@@ -48,46 +77,53 @@
   const APPROVE_WEBHOOK = 'https://webhooks.eu.workato.com/webhooks/rest/ba15636d-84ce-43f3-a362-84737ccf041b/ifc-compliance-approval-handle';
   const REJECT_WEBHOOK  = 'https://webhooks.eu.workato.com/webhooks/rest/ba15636d-84ce-43f3-a362-84737ccf041b/ifc-compliance-selection-reject';
 
-  function show(icon, title, subtitle, badgeClass, badgeText, filename) {
-    document.getElementById('spinner').style.display = 'none';
-    var ic = document.getElementById('icon');
-    ic.textContent = icon; ic.classList.remove('hidden');
-    document.getElementById('title').textContent = title;
-    document.getElementById('subtitle').innerHTML = subtitle;
-    if (filename) {
-      var fn = document.getElementById('filename');
-      fn.textContent = filename; fn.style.display = 'block';
-    }
-    if (badgeClass) {
-      var b = document.createElement('div');
-      b.className = 'badge ' + badgeClass; b.textContent = badgeText;
-      document.getElementById('date').appendChild(b);
-    }
-    document.getElementById('date').innerHTML += '<br>' + new Date().toLocaleString('en-GB', {dateStyle:'long',timeStyle:'short'}) + ' UTC';
+  var params        = new URLSearchParams(window.location.search);
+  var action        = params.get('action')            || '';
+  var itemId        = params.get('itemId')            || '';
+  var fileName      = params.get('fileName')          || '';
+  var projectId     = params.get('projectId')         || '';
+  var approvedFolderUrn = params.get('approvedFolderUrn') || '';
+  var approvedBy    = params.get('approvedBy')        || 'BIM Team';
+  var uploaderName  = params.get('uploaderName')      || '';
+  var uploaderEmail = params.get('uploaderEmail')     || '';
+  var docNumber     = params.get('docNumber')         || '';
+  var discipline    = params.get('discipline')        || '';
+  var projectName   = params.get('projectName')       || '';
+  var passVal       = params.get('passVal')           || '0';
+  var failVal       = params.get('failVal')           || '0';
+  var totalVal      = params.get('totalVal')          || '0';
+  var pctVal        = params.get('pctVal')            || '0';
+
+  // Set up confirm view
+  if (!action || !itemId || !projectId) {
+    document.getElementById('confirm-view').classList.add('hidden');
+    document.getElementById('result-view').classList.remove('hidden');
+    document.getElementById('result-icon').textContent = '\u26a0\ufe0f';
+    document.getElementById('result-title').textContent = 'Invalid Link';
+    document.getElementById('result-subtitle').textContent = 'This approval link is missing required parameters. Please use the link from your compliance email.';
+  } else {
+    var isApprove = action === 'approve';
+    document.getElementById('action-icon').textContent    = isApprove ? '\u2705' : '\u274c';
+    document.getElementById('action-title').textContent   = isApprove ? 'Approve Report?' : 'Reject Report?';
+    document.getElementById('action-subtitle').textContent = isApprove
+      ? 'The report will be copied to the IFC Approved Reports folder. A transmittal email will be sent to the submitter and a copy to you.'
+      : 'The report will be marked as rejected. A notification will be sent.';
+    document.getElementById('filename-display').textContent = fileName;
+    document.getElementById('confirm-btn').textContent    = isApprove ? '\u2705 Confirm Approval' : '\u274c Confirm Rejection';
+    document.getElementById('confirm-btn').className      = 'btn ' + (isApprove ? 'btn-approve' : 'btn-reject');
   }
 
-  (async function() {
-    var params = new URLSearchParams(window.location.search);
-    var action            = params.get('action')            || '';
-    var itemId            = params.get('itemId')            || '';
-    var fileName          = params.get('fileName')          || '';
-    var projectId         = params.get('projectId')         || '';
-    var approvedFolderUrn = params.get('approvedFolderUrn') || '';
-    var approvedBy        = params.get('approvedBy')        || 'BIM Team';
-    var uploaderName      = params.get('uploaderName')      || '';
-    var uploaderEmail     = params.get('uploaderEmail')     || '';
-    var docNumber         = params.get('docNumber')         || '';
-    var discipline        = params.get('discipline')        || '';
-    var projectName       = params.get('projectName')       || '';
-    var passVal           = params.get('passVal')           || '0';
-    var failVal           = params.get('failVal')           || '0';
-    var totalVal          = params.get('totalVal')          || '0';
-    var pctVal            = params.get('pctVal')            || '0';
-
-    if (!action || !itemId || !projectId) {
-      show('\u26a0\ufe0f','Invalid Link','This approval link is missing required parameters.<br>Please use the link from your compliance email.', null, null, null);
+  async function submitAction() {
+    var approverEmail = document.getElementById('approver-email').value.trim();
+    if (!approverEmail || !approverEmail.includes('@')) {
+      document.getElementById('approver-email').style.borderColor = '#c62828';
+      document.getElementById('approver-email').placeholder = 'Please enter your email address';
       return;
     }
+
+    // Show processing
+    document.getElementById('confirm-view').classList.add('hidden');
+    document.getElementById('processing-view').classList.remove('hidden');
 
     var webhookUrl = action === 'approve' ? APPROVE_WEBHOOK : REJECT_WEBHOOK;
     var payload = {
@@ -97,6 +133,7 @@
       projectId:        projectId,
       approvedFolderUrn: approvedFolderUrn,
       approvedBy:       approvedBy,
+      approverEmail:    approverEmail,
       uploaderName:     uploaderName,
       uploaderEmail:    uploaderEmail,
       docNumber:        docNumber,
@@ -115,26 +152,39 @@
         body: JSON.stringify(payload)
       });
 
+      document.getElementById('processing-view').classList.add('hidden');
+      document.getElementById('result-view').classList.remove('hidden');
+
       if (resp.ok) {
         if (action === 'approve') {
-          show('\u2705','Report Approved',
-            'The compliance report has been approved and will be copied to the <strong>IFC Approved Reports</strong> folder in ACC.<br><br>The submitter will be notified by transmittal.',
-            'badge-approved', 'APPROVED', fileName);
+          document.getElementById('result-icon').textContent    = '\u2705';
+          document.getElementById('result-title').textContent   = 'Report Approved';
+          document.getElementById('result-subtitle').innerHTML  = 'The compliance report has been approved and will be copied to the <strong>IFC Approved Reports</strong> folder in ACC.<br><br>A transmittal email will be sent to the submitter. A copy will be sent to <strong>' + approverEmail + '</strong>.';
         } else {
-          show('\u274c','Report Rejected',
-            'The compliance report has been rejected. The submitter will be notified and asked to review and re-upload the IFC model.',
-            'badge-rejected', 'REJECTED', fileName);
+          document.getElementById('result-icon').textContent    = '\u274c';
+          document.getElementById('result-title').textContent   = 'Report Rejected';
+          document.getElementById('result-subtitle').textContent = 'The report has been rejected and the submitter will be notified.';
         }
+        var fn = document.getElementById('result-filename');
+        fn.textContent = fileName; fn.style.display = 'block';
+        var badge = document.createElement('div');
+        badge.className = 'badge ' + (action==='approve' ? 'badge-approved' : 'badge-rejected');
+        badge.textContent = action === 'approve' ? 'APPROVED' : 'REJECTED';
+        document.getElementById('result-date').appendChild(badge);
+        document.getElementById('result-date').innerHTML += '<br>' + new Date().toLocaleString('en-GB',{dateStyle:'long',timeStyle:'short'}) + ' UTC';
       } else {
-        show('\u26a0\ufe0f','Request Failed',
-          'The webhook returned status ' + resp.status + '.<br>Please contact the BIM Team.', null, null, fileName);
+        document.getElementById('result-icon').textContent    = '\u26a0\ufe0f';
+        document.getElementById('result-title').textContent   = 'Request Failed';
+        document.getElementById('result-subtitle').textContent = 'The webhook returned status ' + resp.status + '. Please contact the BIM Team.';
       }
     } catch(err) {
-      show('\u26a0\ufe0f','Connection Error',
-        'Could not reach the Workato webhook.<br>Error: ' + err.message + '<br><br>Please contact the BIM Team.',
-        null, null, fileName);
+      document.getElementById('processing-view').classList.add('hidden');
+      document.getElementById('result-view').classList.remove('hidden');
+      document.getElementById('result-icon').textContent    = '\u26a0\ufe0f';
+      document.getElementById('result-title').textContent   = 'Connection Error';
+      document.getElementById('result-subtitle').textContent = 'Could not reach the webhook. Error: ' + err.message;
     }
-  })();
+  }
 </script>
 </body>
 </html>
