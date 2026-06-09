@@ -93,6 +93,7 @@
   var failVal       = params.get('failVal')           || '0';
   var totalVal      = params.get('totalVal')          || '0';
   var pctVal        = params.get('pctVal')            || '0';
+  var accLink       = params.get('accLink')           || '';
 
   // Set up confirm view
   if (!action || !itemId || !projectId) {
@@ -143,7 +144,7 @@
       failVal:          failVal,
       totalVal:         totalVal,
       pctVal:           pctVal,
-  accLink:          accLink
+      accLink:          accLink
     };
 
     try {
