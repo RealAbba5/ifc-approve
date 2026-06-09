@@ -161,14 +161,7 @@
         },
         body: JSON.stringify({
           event_type: action === 'approve' ? 'approve-report' : 'reject-report',
-          client_payload: {
-            a: itemId, b: fileName, c: approvedBy,
-            d: projectId, e: approvedFolderUrn,
-            f: uploaderName, g: uploaderEmail,
-            h: discipline, i: docNumber, j: projectName,
-            k: passVal, l: failVal, m: totalVal, n: pctVal,
-            o: approverEmail, p: accLink
-          }
+          client_payload: { d: JSON.stringify(payload) }
         })
       });
 
