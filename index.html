@@ -68,19 +68,24 @@
 
   (async function() {
     var params = new URLSearchParams(window.location.search);
-    var action          = params.get('action')          || '';
-    var itemId          = params.get('itemId')          || '';
-    var fileName        = params.get('fileName')        || '';
-    var projectId       = params.get('projectId')       || '';
+    var action            = params.get('action')            || '';
+    var itemId            = params.get('itemId')            || '';
+    var fileName          = params.get('fileName')          || '';
+    var projectId         = params.get('projectId')         || '';
     var approvedFolderUrn = params.get('approvedFolderUrn') || '';
-    var approvedBy      = params.get('approvedBy')      || 'BIM Team';
-    var uploaderName    = params.get('uploaderName')    || '';
-    var uploaderEmail   = params.get('uploaderEmail')   || '';
-    var docNumber       = params.get('docNumber')       || '';
-    var discipline      = params.get('discipline')      || '';
+    var approvedBy        = params.get('approvedBy')        || 'BIM Team';
+    var uploaderName      = params.get('uploaderName')      || '';
+    var uploaderEmail     = params.get('uploaderEmail')     || '';
+    var docNumber         = params.get('docNumber')         || '';
+    var discipline        = params.get('discipline')        || '';
+    var projectName       = params.get('projectName')       || '';
+    var passVal           = params.get('passVal')           || '0';
+    var failVal           = params.get('failVal')           || '0';
+    var totalVal          = params.get('totalVal')          || '0';
+    var pctVal            = params.get('pctVal')            || '0';
 
     if (!action || !itemId || !projectId) {
-      show('⚠️','Invalid Link','This approval link is missing required parameters.<br>Please use the link from your compliance email.', null, null, null);
+      show('\u26a0\ufe0f','Invalid Link','This approval link is missing required parameters.<br>Please use the link from your compliance email.', null, null, null);
       return;
     }
 
@@ -95,7 +100,12 @@
       uploaderName:     uploaderName,
       uploaderEmail:    uploaderEmail,
       docNumber:        docNumber,
-      discipline:       discipline
+      discipline:       discipline,
+      projectName:      projectName,
+      passVal:          passVal,
+      failVal:          failVal,
+      totalVal:         totalVal,
+      pctVal:           pctVal
     };
 
     try {
@@ -107,20 +117,20 @@
 
       if (resp.ok) {
         if (action === 'approve') {
-          show('✅','Report Approved',
+          show('\u2705','Report Approved',
             'The compliance report has been approved and will be copied to the <strong>IFC Approved Reports</strong> folder in ACC.<br><br>The submitter will be notified by transmittal.',
             'badge-approved', 'APPROVED', fileName);
         } else {
-          show('❌','Report Rejected',
+          show('\u274c','Report Rejected',
             'The compliance report has been rejected. The submitter will be notified and asked to review and re-upload the IFC model.',
             'badge-rejected', 'REJECTED', fileName);
         }
       } else {
-        show('⚠️','Request Failed',
+        show('\u26a0\ufe0f','Request Failed',
           'The webhook returned status ' + resp.status + '.<br>Please contact the BIM Team.', null, null, fileName);
       }
     } catch(err) {
-      show('⚠️','Connection Error',
+      show('\u26a0\ufe0f','Connection Error',
         'Could not reach the Workato webhook.<br>Error: ' + err.message + '<br><br>Please contact the BIM Team.',
         null, null, fileName);
     }
