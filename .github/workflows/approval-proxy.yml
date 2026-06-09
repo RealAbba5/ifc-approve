@@ -13,37 +13,36 @@ jobs:
         with:
           github-token: ${{ secrets.DISPATCH_TOKEN }}
           script: |
-            const d = context.payload.client_payload;
-            const action = context.payload.action;
-            core.info('Action: ' + action);
-            core.info('Payload: ' + JSON.stringify(d));
+            const raw = context.payload.client_payload.d;
+            const p = JSON.parse(raw);
+            const eventType = context.payload.action;
+            core.info('Event: ' + eventType);
+            core.info('itemId: ' + p.itemId);
 
-            if (action === 'approve-report') {
+            if (eventType === 'approve-report') {
               await github.rest.actions.createWorkflowDispatch({
                 owner: 'RealAbba5',
                 repo: 'ifc-compliance',
                 workflow_id: 'ifc-copy-approved.yml',
                 ref: 'main',
                 inputs: {
-                  item_id:             d.a || '',
-                  report_filename:     d.b || '',
-                  approved_by:         d.c || 'BIM Team',
-                  project_id:          d.d || '',
-                  approved_folder_urn: d.e || '',
-                  uploader_name:       d.f || '',
-                  uploader_email:      d.g || '',
-                  discipline:          d.h || '',
-                  doc_number:          d.i || '',
-                  project_name:        d.j || '',
-                  pass_val:            String(d.k || '0'),
-                  fail_val:            String(d.l || '0'),
-                  total_val:           String(d.m || '0'),
-                  pct_val:             String(d.n || '0'),
-                  approver_email:      d.o || '',
-                  accLink:             d.p || ''
+                  item_id:             p.itemId             || '',
+                  report_filename:     p.fileName           || '',
+                  approved_by:         p.approvedBy         || 'BIM Team',
+                  project_id:          p.projectId          || '',
+                  approved_folder_urn: p.approvedFolderUrn  || '',
+                  uploader_name:       p.uploaderName       || '',
+                  uploader_email:      p.uploaderEmail       || '',
+                  discipline:          p.discipline         || '',
+                  doc_number:          p.docNumber          || '',
+                  project_name:        p.projectName        || '',
+                  pass_val:            String(p.passVal     || '0'),
+                  fail_val:            String(p.failVal     || '0'),
+                  total_val:           String(p.totalVal    || '0'),
+                  pct_val:             String(p.pctVal      || '0'),
+                  approver_email:      p.approver_email     || '',
+                  accLink:             p.accLink            || ''
                 }
               });
-              core.info('Dispatched ifc-copy-approved.yml successfully');
-            } else {
-              core.info('Reject - no file movement needed');
+              core.info('SUCCESS: Dispatched ifc-copy-approved.yml');
             }
