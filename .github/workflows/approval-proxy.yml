@@ -1,0 +1,47 @@
+name: Approval Proxy
+
+on:
+  repository_dispatch:
+    types: [approve-report, reject-report]
+
+jobs:
+  proxy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch to ifc-compliance
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.DISPATCH_TOKEN }}
+          script: |
+            const p = context.payload.client_payload;
+            const action = p.action || context.payload.action;
+            
+            if (action === 'approve') {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: 'RealAbba5',
+                repo: 'ifc-compliance',
+                workflow_id: 'ifc-copy-approved.yml',
+                ref: 'main',
+                inputs: {
+                  item_id:             p.itemId             || '',
+                  report_filename:     p.fileName           || '',
+                  approved_by:         p.approvedBy         || 'BIM Team',
+                  project_id:          p.projectId          || '',
+                  approved_folder_urn: p.approvedFolderUrn  || '',
+                  uploader_name:       p.uploaderName       || '',
+                  uploader_email:      p.uploaderEmail       || '',
+                  discipline:          p.discipline         || '',
+                  doc_number:          p.docNumber          || '',
+                  project_name:        p.projectName        || '',
+                  pass_val:            String(p.passVal     || '0'),
+                  fail_val:            String(p.failVal     || '0'),
+                  total_val:           String(p.totalVal    || '0'),
+                  pct_val:             String(p.pctVal      || '0'),
+                  approver_email:      p.approver_email     || '',
+                  accLink:             p.accLink            || ''
+                }
+              });
+              core.info('Dispatched approval to ifc-compliance');
+            } else {
+              core.info('Reject action - no file movement needed');
+            }
